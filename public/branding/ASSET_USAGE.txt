@@ -1,0 +1,13 @@
+West Adelaide Legal approved brand assets
+
+Primary header/light-background logo:
+  west-adelaide-legal-logo.svg
+
+Dark-background/footer logo:
+  west-adelaide-legal-logo-dark.svg
+
+Compact/mobile/favicon monogram:
+  west-adelaide-legal-mark.svg or west-adelaide-legal-mark-dark.svg
+
+PNG files are fallbacks only. Prefer SVG in the website.
+Do not redraw, recolour, add taglines, or substitute the approved mark.
