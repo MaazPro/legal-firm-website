@@ -342,7 +342,7 @@ a {
 
 .whatsapp-button {
   position: fixed;
-  right: 22px;
+  left: 22px;
   bottom: 22px;
   z-index: 90;
   min-height: 48px;
@@ -1704,7 +1704,7 @@ a {
   }
 
   .whatsapp-button {
-    right: 14px;
+    left: 14px;
     bottom: 14px;
     width: 48px;
     justify-content: center;
