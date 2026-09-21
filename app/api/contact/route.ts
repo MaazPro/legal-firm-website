@@ -1,4 +1,7 @@
+import nodemailer from "nodemailer";
 import { NextResponse } from "next/server";
+
+export const runtime = "nodejs";
 
 type ContactPayload = {
   fullName?: unknown;
@@ -38,8 +41,14 @@ export async function POST(request: Request) {
     );
   }
 
-  const endpoint = process.env.CONTACT_FORM_ENDPOINT;
-  if (!endpoint) {
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPort = Number(process.env.SMTP_PORT || "465");
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPassword = process.env.SMTP_PASSWORD;
+  const fromEmail = process.env.SMTP_FROM_EMAIL || smtpUser;
+  const toEmail = process.env.CONTACT_TO_EMAIL || "akrishnan@westadelaidelegal.com.au";
+
+  if (!smtpHost || !smtpUser || !smtpPassword || !fromEmail || !Number.isInteger(smtpPort)) {
     return NextResponse.json(
       {
         message:
@@ -49,34 +58,52 @@ export async function POST(request: Request) {
     );
   }
 
-  try {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (process.env.CONTACT_FORM_TOKEN) {
-      headers.Authorization = `Bearer ${process.env.CONTACT_FORM_TOKEN}`;
-    }
+  const fullName = (payload.fullName as string).trim();
+  const email = (payload.email as string).trim();
+  const phone = (payload.phone as string).trim();
+  const message = (payload.message as string).trim();
 
-    const providerResponse = await fetch(endpoint, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        fullName: (payload.fullName as string).trim(),
-        email: (payload.email as string).trim(),
-        phone: (payload.phone as string).trim(),
-        message: (payload.message as string).trim(),
-        privacyAcknowledged: true,
-        source: "westadelaidelegal.com.au",
-      }),
-      cache: "no-store",
+  try {
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: {
+        user: smtpUser,
+        pass: smtpPassword,
+      },
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 15_000,
     });
 
-    if (!providerResponse.ok) {
-      throw new Error("Provider rejected the request");
-    }
+    await transporter.sendMail({
+      from: { name: "West Adelaide Legal Website", address: fromEmail },
+      to: toEmail,
+      replyTo: { name: fullName, address: email },
+      subject: "New website enquiry – West Adelaide Legal",
+      text: [
+        "A new enquiry was submitted through westadelaidelegal.com.au.",
+        "",
+        `Name: ${fullName}`,
+        `Email: ${email}`,
+        `Phone: ${phone}`,
+        "",
+        "Message:",
+        message,
+        "",
+        "Privacy acknowledgement: Confirmed",
+      ].join("\n"),
+    });
 
     return NextResponse.json({ message: "Enquiry sent successfully." });
-  } catch {
+  } catch (error) {
+    console.error("Contact form email delivery failed", error);
     return NextResponse.json(
-      { message: "Your enquiry could not be sent. Please contact us by phone or email." },
+      {
+        message:
+          "Your enquiry could not be sent. Please call 0410 106 136 or email akrishnan@westadelaidelegal.com.au.",
+      },
       { status: 502 },
     );
   }

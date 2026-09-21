@@ -8,7 +8,7 @@ Production-ready multi-page website for West Adelaide Legal Pty Ltd, built from 
 - React
 - Chakra UI for accessible interactive primitives
 - Tailwind CSS and project CSS for layout and the approved brand system
-- Netlify-compatible server route for contact-form delivery
+- Server-side SMTP delivery for the contact form
 
 ## Local development
 
@@ -22,6 +22,14 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+If a stale Webpack/HMR bundle causes a runtime error after dependency or Next.js
+changes, stop the development server and start from a clean generated cache:
+
+```bash
+npm run clean
+npm run dev
+```
+
 ## Checks and production build
 
 ```bash
@@ -33,32 +41,33 @@ npm run start
 
 ## Environment variables
 
-Copy `.env.example` to `.env.local` for local development or configure the same values in Netlify:
+Copy `.env.example` to `.env.local` for local development or configure the same values on the server:
 
 - `NEXT_PUBLIC_SITE_URL`: canonical production URL. Defaults to `https://www.westadelaidelegal.com.au`.
-- `CONTACT_FORM_ENDPOINT`: optional server-to-server form delivery endpoint. The endpoint should accept a JSON `POST` containing `fullName`, `email`, `phone`, `message`, `privacyAcknowledged`, and `source`.
-- `CONTACT_FORM_TOKEN`: optional bearer token sent from the server route to the form provider. It is never exposed to browser code.
+- `SMTP_HOST`: SMTP hostname. Hostinger Email uses `smtp.hostinger.com`.
+- `SMTP_PORT`: SMTP port. Hostinger Email uses `465` for SSL or `587` for STARTTLS.
+- `SMTP_USER`: full email address of the sending mailbox.
+- `SMTP_PASSWORD`: password for the sending mailbox. Keep this server-only and out of Git.
+- `SMTP_FROM_EMAIL`: sender address; this should be the authenticated domain mailbox.
+- `CONTACT_TO_EMAIL`: enquiry recipient. Defaults to `akrishnan@westadelaidelegal.com.au`.
 
-When `CONTACT_FORM_ENDPOINT` is not configured, frontend validation remains available and the form displays a clear phone/email fallback without losing control of the page.
+## Hostinger deployment
 
-## Netlify deployment
+The SMTP route requires a running Node.js server. Hostinger currently supports Node.js on VPS plans, not standard Web or Cloud hosting. On a VPS:
 
-1. Push this project to the Git repository Netlify will deploy.
-2. In Netlify, select **Add new site → Import an existing project** and connect the repository.
-3. If this directory is nested in a larger repository, set the base directory to `legal-firm-website`; otherwise leave it blank.
-4. Use build command `npm run build`.
-5. Leave the publish directory blank so Netlify&apos;s current Next.js integration can configure it automatically.
-6. Set Node.js to version 20 in the Netlify build environment.
-7. Add the environment variables listed above under **Site configuration → Environment variables**.
-8. Deploy the site, then verify the six routes, contact delivery, phone/email links, WhatsApp link, map, sitemap and robots file on the production domain.
+1. Install Node.js 20 or newer and upload/clone the project.
+2. Run `npm ci` and `npm run build`.
+3. Configure the environment variables above in the process manager or a protected `.env.local` file.
+4. Run `npm run start` behind HTTPS using a process manager and reverse proxy.
+5. Submit one real test enquiry and confirm it arrives at the recipient address.
 
-No custom `netlify.toml` is required for the standard Next.js integration.
+If the purchased Hostinger plan is Web or Cloud hosting, use a PHP mail endpoint or an external email API instead of this Node.js route.
 
 ## Project structure
 
 ```text
 app/
-  api/contact/          Server-side form delivery adapter
+  api/contact/          Server-side SMTP form handler
   about/                About page
   contact/              Contact page
   fees-appointments/    Fees and appointments page
@@ -74,4 +83,4 @@ public/images/          Production hero background
 
 ## Contact-form integration note
 
-The client has not selected a form provider. The included `/api/contact` route validates the submitted data and forwards it only when `CONTACT_FORM_ENDPOINT` is configured. Confirm the selected provider&apos;s payload and authentication requirements before launch; if it requires a different contract, adapt only the server route and keep credentials in Netlify environment variables.
+The browser sends enquiries only to `/api/contact`. The server validates the data and delivers it through SMTP, so mailbox credentials are never included in the client bundle. Keep all SMTP variables server-only and do not rename them with a `NEXT_PUBLIC_` prefix.
